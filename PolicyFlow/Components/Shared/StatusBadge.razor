@@ -1,0 +1,15 @@
+@using PolicyFlow.Models
+
+<span class="badge @CssClass">@Status</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = "";
+
+    private string CssClass => Status switch
+    {
+        PolicyStatuses.Active => "bg-success",
+        PolicyStatuses.Pending => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}

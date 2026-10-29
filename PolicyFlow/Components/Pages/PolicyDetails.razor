@@ -1,0 +1,141 @@
+@page "/policies/details/{id:int}"
+@inject PolicyService PolicyService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Policy Details - PolicyFlow</PageTitle>
+
+<div class="container py-4">
+    <h1>Policy Details</h1>
+    <p class="text-secondary">
+        View the information for this insurance policy.
+    </p>
+
+    @if (isLoading)
+    {
+        <p>Loading policy details...</p>
+    }
+    else if (policy is null)
+    {
+        <div class="alert alert-warning" role="alert">
+            Policy not found. It may have been deleted or the ID is invalid.
+        </div>
+
+        <a href="/" class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h4 mb-4">@policy.PolicyNumber</h2>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <dl class="row">
+                    <dt class="col-sm-4">Customer Name</dt>
+                    <dd class="col-sm-8">@policy.CustomerName</dd>
+
+                    <dt class="col-sm-4">Policy Type</dt>
+                    <dd class="col-sm-8">@policy.PolicyType</dd>
+
+                    <dt class="col-sm-4">Monthly Premium</dt>
+                    <dd class="col-sm-8">
+                        R @policy.MonthlyPremium.ToString("N2")
+                    </dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        <StatusBadge Status="@policy.Status" />
+                    </dd>
+
+                    <dt class="col-sm-4">Database ID</dt>
+                    <dd class="col-sm-8">@policy.Id</dd>
+                </dl>
+
+                <a href="@($"/policies/edit/{policy.Id}")"
+                   class="btn btn-primary me-2">
+                    Edit Policy
+                </a>
+
+                <button type="button"
+                        class="btn btn-danger me-2"
+                        @onclick="HandleDelete"
+                        disabled="@isDeleting">
+                    @(isDeleting ? "Deleting..." : "Delete Policy")
+                </button>
+
+                <a href="/" class="btn btn-outline-secondary">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private InsurancePolicy? policy;
+    private bool isLoading = true;
+    private bool isDeleting = false;
+    private string errorMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = "";
+
+        policy = await PolicyService.GetByIdAsync(id);
+
+        isLoading = false;
+    }
+
+    private async Task HandleDelete()
+    {
+        if (policy is null || isDeleting)
+        {
+            return;
+        }
+
+        bool confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Are you sure you want to permanently delete policy {policy.PolicyNumber}?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        isDeleting = true;
+        errorMessage = "";
+
+        try
+        {
+            bool deleted = await PolicyService.DeleteAsync(policy.Id);
+
+            if (!deleted)
+            {
+                errorMessage = "The policy could not be found. It may already have been deleted.";
+                return;
+            }
+
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            errorMessage = "An error occurred while deleting the policy. Please try again.";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+}

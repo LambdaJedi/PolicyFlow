@@ -1,0 +1,104 @@
+@page "/policies/create"
+@inject NavigationManager Navigation
+@inject PolicyService PolicyService
+
+<PageTitle>Create Policy - PolicyFlow</PageTitle>
+
+<div class="container py-4">
+    <h1>Create Insurance Policy</h1>
+    <p class="text-secondary">
+        Register a new insurance policy.
+    </p>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <EditForm Model="policy" OnValidSubmit="HandleCreatePolicy">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Policy Number</label>
+                    <InputText class="form-control"
+                               @bind-Value="policy.PolicyNumber" />
+                    <ValidationMessage For="@(() => policy.PolicyNumber)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Customer Name</label>
+                    <InputText class="form-control"
+                               @bind-Value="policy.CustomerName" />
+                    <ValidationMessage For="@(() => policy.CustomerName)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Policy Type</label>
+                    <InputSelect class="form-select"
+                                 @bind-Value="policy.PolicyType">
+                        <option value="">Select a policy type</option>
+                        @foreach (var type in PolicyTypes.All)
+                        {
+                            <option value="@type">@PolicyTypes.DisplayName(type)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => policy.PolicyType)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Monthly Premium (R)</label>
+                    <InputNumber class="form-control"
+                                 @bind-Value="policy.MonthlyPremium" />
+                    <ValidationMessage For="@(() => policy.MonthlyPremium)" />
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                    @(isSaving ? "Creating..." : "Create Policy")
+                </button>
+
+                <a href="/" class="btn btn-outline-secondary ms-2">
+                    Cancel
+                </a>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private InsurancePolicy policy = new();
+    private string errorMessage = "";
+    private bool isSaving;
+
+    private async Task HandleCreatePolicy()
+    {
+        if (isSaving)
+        {
+            return;
+        }
+
+        errorMessage = "";
+        isSaving = true;
+
+        try
+        {
+            var result = await PolicyService.AddAsync(policy);
+
+            if (result != PolicyResult.Success)
+            {
+                errorMessage = result.ToMessage();
+                return;
+            }
+
+            Navigation.NavigateTo("/");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

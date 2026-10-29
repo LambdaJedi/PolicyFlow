@@ -1,0 +1,143 @@
+@page "/policies/edit/{id:int}"
+@inject PolicyService PolicyService
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Policy - PolicyFlow</PageTitle>
+
+<div class="container py-4">
+    <h1>Edit Insurance Policy</h1>
+    <p class="text-secondary">
+        Update the details of an existing policy.
+    </p>
+
+    @if (isLoading)
+    {
+        <p>Loading policy...</p>
+    }
+    else if (policy is null)
+    {
+        <div class="alert alert-warning" role="alert">
+            Policy not found.
+        </div>
+
+        <a href="/" class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <EditForm Model="policy" OnValidSubmit="HandleUpdate">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Policy Number</label>
+                        <InputText class="form-control"
+                                   @bind-Value="policy.PolicyNumber" />
+                        <ValidationMessage For="@(() => policy.PolicyNumber)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Customer Name</label>
+                        <InputText class="form-control"
+                                   @bind-Value="policy.CustomerName" />
+                        <ValidationMessage For="@(() => policy.CustomerName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Policy Type</label>
+                        <InputSelect class="form-select"
+                                     @bind-Value="policy.PolicyType">
+                            <option value="">Select a policy type</option>
+                            @foreach (var type in PolicyTypes.All)
+                            {
+                                <option value="@type">@PolicyTypes.DisplayName(type)</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => policy.PolicyType)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Monthly Premium (R)</label>
+                        <InputNumber class="form-control"
+                                     @bind-Value="policy.MonthlyPremium" />
+                        <ValidationMessage For="@(() => policy.MonthlyPremium)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <InputSelect class="form-select"
+                                     @bind-Value="policy.Status">
+                            @foreach (var status in PolicyStatuses.All)
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @(isSaving ? "Saving..." : "Save Changes")
+                    </button>
+
+                    <a href="/policies/details/@policy.Id" class="btn btn-outline-secondary ms-2">
+                        Cancel
+                    </a>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private InsurancePolicy? policy;
+    private bool isLoading = true;
+    private bool isSaving;
+    private string errorMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        policy = await PolicyService.GetByIdAsync(id);
+        isLoading = false;
+    }
+
+    private async Task HandleUpdate()
+    {
+        if (policy is null || isSaving)
+        {
+            return;
+        }
+
+        errorMessage = "";
+        isSaving = true;
+
+        try
+        {
+            var result = await PolicyService.UpdateAsync(policy);
+
+            if (result != PolicyResult.Success)
+            {
+                errorMessage = result.ToMessage();
+                return;
+            }
+
+            Navigation.NavigateTo($"/policies/details/{policy.Id}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
